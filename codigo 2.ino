@@ -9,7 +9,7 @@
 #include <Preferences.h>
 
 // ---- TU API KEY ----
-const char* groqApiKey = "TU_API_DE_GROP";
+const char* groqApiKey = "INGRESA_TU_API_DE_GROP";
 // --------------------
 
 // ---- LISTA DE WIFIS PREDETERMINADOS (opcional) ----
