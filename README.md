@@ -116,8 +116,13 @@ una pantalla de 4 pines para probar el codigo)
 2. Consigue tu API key gratis en console.groq.com
 3. Pega tu API key en el código...
 
-## Uso
-- Mueve el joystick para navegar el teclado
-- Presiona el botón interno del joystick para seleccionar una letra o accion
-- Selecciona '#' para enviar tu pregunta
-...
+## 📚 Librerías necesarias
+
+Instala estas desde Arduino IDE (Herramientas → Administrar bibliotecas):
+
+- **ArduinoJson** (por Benoit Blanchon)
+- **Adafruit GFX Library** (por Adafruit)
+- **Adafruit SSD1306** (por Adafruit)
+> Las librerías WiFi, HTTPClient, WebServer, Preferences, SPI y Wire ya
+> vienen incluidas al instalar el soporte de placas ESP32 en Arduino IDE,
+> no requieren instalación aparte.
