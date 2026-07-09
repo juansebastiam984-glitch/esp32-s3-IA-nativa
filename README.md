@@ -1,8 +1,33 @@
 # Asistente de IA con ESP32-S3
 
-Un dispositivo standalone que usa un joystick para escribir preguntas
-en un teclado en pantalla, las manda a la API de Groq, y muestra la
-respuesta en una pantalla OLED.
+escribes preguntas con un joystick sobre un teclado dibujado en pantalla OLED, se mandan por WiFi a Groq (IA gratis), y la respuesta aparece en la misma pantalla — sin necesitar celular ni PC. También trae un mini-juego de esquivar cajas en 3 carriles como extra, y configura su propio WiFi solo (con red/contraseña predeterminadas, un portal web de respaldo, o comandos por terminal para gestionarlo.
+
+# funciones y simbolo de navegacion
+## ⌨️ Símbolos del teclado en pantalla
+
+| Símbolo | Función |
+|---------|---------|
+| `^`     | Alterna mayúsculas/minúsculas (solo en la página de letras) |
+| `&`     | Cambia entre la página de letras y la de números/símbolos |
+| `_`     | Espacio |
+| `<`     | Borra el último carácter |
+| `#`     | Envía la pregunta a la IA |
+| `@`     | Abre el mini-juego de esquivar cajas |
+
+## 🕹️ Controles del joystick
+
+**Modo escritura:**
+- Mueve el joystick para navegar por las letras/símbolos del teclado
+- Presiona el botón (SW) para seleccionar la letra resaltada
+
+**Modo respuesta:**
+- Arriba/abajo para pasar de página si la respuesta es larga
+- Presiona el botón (SW) para volver a escribir una nueva pregunta
+
+**Modo juego:**
+- Izquierda/derecha para cambiar de carril
+- Presiona el botón (SW) para salir del juego en cualquier momento
+
 
 ## Hardware necesario
 - ESP32-S3
