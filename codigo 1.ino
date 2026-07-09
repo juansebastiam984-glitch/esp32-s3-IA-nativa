@@ -9,17 +9,17 @@
 #include <Preferences.h>
 
 // ---- TU API KEY ----
-const char* groqApiKey = "INGRESA_TU_API_DE_GROP";
-// --------------------
+const char* groqApiKey = "INGRESA_API_DE_GROP_AQUI";
+// ------------------
 
 // ---- LISTA DE WIFIS PREDETERMINADOS (opcional) ----
 struct RedWiFi {
   const char* ssid;
   const char* password;
 };
-// LISTA DE WIFIS DE EJMEPLOS
+// ---- LISTA DE WIFIS DE EJEMPLO
 RedWiFi redesGuardadas[] = {
-  {"WIFI1", "clave1"},
+  {"1", "1"},
   {"OtraRedCasa", "otraClave123"},
   {"WiFiDelTaller", "claveTaller456"}
 };
@@ -51,6 +51,7 @@ WebServer server(80);
 String ssidGuardado, passGuardado;
 
 // ---- Teclado en pantalla: 2 paginas ----
+// '@' = abrir el juego de esquivar cajas
 const int FILAS = 4;
 const int COLS = 10;
 
@@ -58,14 +59,14 @@ const char teclado_letras[FILAS][COLS + 1] = {
   "ABCDEFGHIJ",
   "KLMNOPQRST",
   "UVWXYZ    ",
-  "^&_<#     "
+  "^&_<#@    "
 };
 
 const char teclado_simbolos[FILAS][COLS + 1] = {
   "1234567890",
   ".,!?-+*/=@",
   "()[]{}:;%$",
-  "^&_<#     "
+  "^&_<#@    "
 };
 
 enum Pagina { LETRAS, SIMBOLOS };
@@ -80,7 +81,7 @@ bool botonPresionadoAntes = false;
 String buffer = "";
 String respuestaActual = "";
 
-enum Modo { ESCRIBIENDO, RESPUESTA };
+enum Modo { ESCRIBIENDO, RESPUESTA, JUEGO };
 Modo modoActual = ESCRIBIENDO;
 bool respuestaYaMostrada = false;
 
@@ -94,6 +95,31 @@ int lineasCount = 0;
 int paginaRespuestaActual = 0;
 int paginaAnteriorMostrada = -1;
 bool ejeLibreRespuesta = true;
+
+// ---- Juego: esquivar cajas en carretera de 3 carriles ----
+#define NUM_CARRILES 3
+#define MAX_CAJAS 3
+
+struct Caja {
+  int carril;
+  int y;
+  bool activa;
+};
+Caja cajas[MAX_CAJAS];
+
+int carrilActual = 1;
+bool ejeLibreJuego = true;
+
+const int laneWidth = SCREEN_WIDTH / NUM_CARRILES;
+const int carAncho = 14;
+const int carAlto = 12;
+const int carritoY = 47;
+const int cajaLado = 9;
+
+int puntuacion = 0;
+bool juegoTerminado = false;
+unsigned long ultimoSpawn = 0;
+int velocidadCaida = 2;
 
 // ---------- OLED texto simple ----------
 void mostrarEnOLED(String texto) {
@@ -304,6 +330,129 @@ bool leerBotonPresionado() {
   }
   botonPresionadoAntes = estado;
   return presionado;
+}
+
+// ---------- Juego: esquivar cajas en carretera ----------
+int xCentroCarril(int carril) {
+  return carril * laneWidth + laneWidth / 2;
+}
+
+void iniciarJuego() {
+  for (int i = 0; i < MAX_CAJAS; i++) cajas[i].activa = false;
+  carrilActual = 1;
+  puntuacion = 0;
+  juegoTerminado = false;
+  velocidadCaida = 2;
+  ultimoSpawn = millis();
+  randomSeed(millis());
+}
+
+void leerJoystickJuego() {
+  int x = analogRead(PIN_VRX);
+
+  if (ejeLibreJuego) {
+    if (x > 3000 && carrilActual < NUM_CARRILES - 1) {
+      carrilActual++;
+      ejeLibreJuego = false;
+    } else if (x < 1000 && carrilActual > 0) {
+      carrilActual--;
+      ejeLibreJuego = false;
+    }
+  }
+
+  if (x > 1500 && x < 2500) {
+    ejeLibreJuego = true;
+  }
+}
+
+void actualizarJuego() {
+  leerJoystickJuego();
+
+  if (millis() - ultimoSpawn > 900) {
+    for (int i = 0; i < MAX_CAJAS; i++) {
+      if (!cajas[i].activa) {
+        cajas[i].activa = true;
+        cajas[i].carril = random(0, NUM_CARRILES);
+        cajas[i].y = 12;
+        break;
+      }
+    }
+    ultimoSpawn = millis();
+  }
+
+  for (int i = 0; i < MAX_CAJAS; i++) {
+    if (cajas[i].activa) {
+      cajas[i].y += velocidadCaida;
+
+      if (cajas[i].y > SCREEN_HEIGHT) {
+        cajas[i].activa = false;
+        puntuacion++;
+        if (puntuacion % 5 == 0 && velocidadCaida < 8) velocidadCaida++;
+      } else if (cajas[i].carril == carrilActual) {
+        bool colisionY = (cajas[i].y + cajaLado >= carritoY) && (cajas[i].y <= carritoY + carAlto);
+        if (colisionY) juegoTerminado = true;
+      }
+    }
+  }
+}
+
+void dibujarCarro(int x, int y) {
+  // carroceria
+  display.fillRect(x + 1, y + 5, carAncho - 2, 6, SSD1306_WHITE);
+  // cabina/techo
+  display.fillRect(x + 3, y, carAncho - 6, 6, SSD1306_WHITE);
+  // parabrisas (recorte oscuro)
+  display.fillRect(x + 4, y + 1, carAncho - 8, 3, SSD1306_BLACK);
+  // llantas
+  display.fillRect(x, y + 10, 3, 2, SSD1306_WHITE);
+  display.fillRect(x + carAncho - 3, y + 10, 3, 2, SSD1306_WHITE);
+}
+
+void dibujarCarretera() {
+  int offset = (millis() / 80) % 8;
+  for (int carril = 1; carril < NUM_CARRILES; carril++) {
+    int x = carril * laneWidth;
+    for (int y = 11 - offset; y < SCREEN_HEIGHT; y += 8) {
+      if (y > 10) display.drawFastVLine(x, y, 4, SSD1306_WHITE);
+    }
+  }
+}
+
+void mostrarJuego() {
+  display.clearDisplay();
+  display.setTextSize(1);
+  display.setTextColor(SSD1306_WHITE);
+
+  display.setCursor(0, 0);
+  display.print("Pts:" + String(puntuacion));
+
+  display.setCursor(120, 0);
+  display.print("X");
+
+  display.drawLine(0, 10, SCREEN_WIDTH, 10, SSD1306_WHITE);
+
+  if (juegoTerminado) {
+    display.setCursor(20, 24);
+    display.print("PERDISTE");
+    display.setCursor(10, 36);
+    display.print("Puntos: " + String(puntuacion));
+    display.setCursor(0, 54);
+    display.print("SW = salir");
+  } else {
+    dibujarCarretera();
+
+    for (int i = 0; i < MAX_CAJAS; i++) {
+      if (cajas[i].activa) {
+        int cx = xCentroCarril(cajas[i].carril) - cajaLado / 2;
+        display.fillRect(cx, cajas[i].y, cajaLado, cajaLado, SSD1306_WHITE);
+      }
+    }
+
+    int carX = xCentroCarril(carrilActual) - carAncho / 2;
+    dibujarCarro(carX, carritoY);
+  }
+
+  display.display();
 }
 
 // ---------- Comandos por Monitor Serie ----------
@@ -578,6 +727,9 @@ void loop() {
         mayusculas = !mayusculas;
       } else if (actual == '&') {
         paginaActual = (paginaActual == LETRAS) ? SIMBOLOS : LETRAS;
+      } else if (actual == '@') {
+        iniciarJuego();
+        modoActual = JUEGO;
       } else {
         buffer += aplicarCaso(actual);
       }
@@ -608,5 +760,17 @@ void loop() {
     }
 
     delay(80);
+  }
+  else if (modoActual == JUEGO) {
+    if (!juegoTerminado) {
+      actualizarJuego();
+    }
+    mostrarJuego();
+
+    if (leerBotonPresionado()) {
+      modoActual = ESCRIBIENDO;
+    }
+
+    delay(50);
   }
 }
